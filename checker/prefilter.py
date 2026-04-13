@@ -119,7 +119,12 @@ class PreFilter:
         try:
             with open(WHITELIST_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                self.whitelist = set(data.get("trusted_domains", []))
+                raw_domains = data.get("trusted_domains", [])
+                # __KATEGORIYA__ markerlarini o'tkazib yuborish
+                self.whitelist = {
+                    d for d in raw_domains
+                    if d and not d.startswith("__")
+                }
         except (FileNotFoundError, json.JSONDecodeError):
             self.whitelist = set()
 

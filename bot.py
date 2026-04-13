@@ -158,8 +158,10 @@ async def main():
             bot,
             allowed_updates=[
                 "message",
+                "callback_query",   # ← Tugma bosishlar uchun MUHIM!
                 "inline_query",
                 "chat_member",
+                "my_chat_member",
             ],
         )
     finally:
