@@ -12,6 +12,8 @@ import sys
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiohttp import web
+import os
 
 from config import BOT_TOKEN
 from checker.local_db import LocalDB
@@ -52,6 +54,19 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
+
+    # Render uchun kichik web server (Uxlamasligi uchun)
+    async def handle_ping(request):
+        return web.Response(text="Bot is alive!")
+
+    app = web.Application()
+    app.router.add_get("/", handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info("🌐 Web server port %d da ishga tushdi", port)
 
     # LocalDB
     local_db = LocalDB()
