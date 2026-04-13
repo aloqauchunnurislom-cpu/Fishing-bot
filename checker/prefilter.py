@@ -277,30 +277,55 @@ class PreFilter:
         found: list[str] = []
 
         for kw in self.keywords_latin:
+            if kw.startswith("__"):  # Kategoriya markeri — o'tkazib yuborish
+                continue
             if kw in text:
                 found.append(kw)
         for kw in self.keywords_cyrillic:
+            if kw.startswith("__"):
+                continue
             if kw in text:
                 found.append(kw)
 
         if found:
-            # KUCHAYTIRILGAN: har bir so'z uchun +8 (avval +4 edi)
-            # 1 so'z = +8, 2 so'z = +16, 3+ = +24 min
-            score = min(len(found) * 8, 48)
+            # KUCHAYTIRILGAN: har bir so'z uchun +8
+            score = min(len(found) * 8, 56)
 
-            # Agar "yutuq", "priz", "g'olib" kabi juda xavfli so'z bo'lsa — qo'shimcha ball
+            # Juda xavfli so'zlar — qo'shimcha ball
             high_risk_words = {
-                "yutuq", "priz", "g'olib", "mukofot", "sovg'a", "bepul",
-                "tekin", "prezident yordami", "davlat yordami", "moliyaviy yordam",
-                "hisobingiz xavf ostida", "kartani bloklash", "sud xabarnomasi",
-                "sud chaqiruvi", "sud qarori", "ютуқ", "мукофот", "совға",
-                "бепул", "текин", "президент ёрдами", "давлат ёрдами",
+                # Lotincha
+                "yutuq", "priz", "g'olib", "mukofot", "sovg'a", "bepul", "tekin",
+                "prezident yordami", "davlat yordami", "moliyaviy yordam",
+                "hisobingiz xavf ostida", "kartani bloklash",
+                "sud xabarnomasi", "sud chaqiruvi", "sud qarori",
+                "sudga chaqiruv", "sizga sud xati", "suddan xabarnoma",
+                "siz ustingizdan ish ochildi", "jarima to'lash",
+                "ma'muriy ish ochildi", "sizga protokol rasmiylashtirildi",
+                "siz tushgan video", "sharmanda video", "yashirin video",
+                "bu sizmisiz video", "sizni videoga olishdi",
+                "karta bloklandi", "hisobingiz muzlatildi", "hisobingiz bloklandi",
+                "sizdan pul yechildi", "sizga posilka keldi",
+                "sizni kimdir suratga oldi", "sizga qarshi video",
+                "mib xati", "mibdan xabar", "ypx jarima",
+                "kompensatsiya", "subsidiya", "prezident farmoni",
+                # Kirillcha
+                "ютуқ", "мукофот", "совға", "бепул", "текин",
+                "президент ёрдами", "давлат ёрдами", "молиявий ёрдам",
+                "суд чақируви", "суд хабарномаси", "судга чақирув",
+                "сизга суд хати", "суддан хабарнома",
+                "устингиздан иш очилди", "жарима тўлаш",
+                "маъмурий иш", "йпх жарима",
+                "шарманда видео", "яширин видео", "бу сизмисиз видео",
+                "карта блокланди", "ҳисобингиз музлатилди", "ҳисобингиз блокланди",
+                "пул ечилди", "сизга посилка келди",
+                "миб хати", "президент фармони",
+                "компенсация", "субсидия",
             }
             high_risk_found = [w for w in found if w in high_risk_words]
             if high_risk_found:
-                score += len(high_risk_found) * 10
+                score += len(high_risk_found) * 12
                 signals.append(
-                    f"🚨 Juda xavfli so'zlar: {', '.join(high_risk_found[:3])}"
+                    f"🚨 Juda xavfli so'zlar: {', '.join(high_risk_found[:4])}"
                 )
 
             preview = ", ".join(found[:5])
