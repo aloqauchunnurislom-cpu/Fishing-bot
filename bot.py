@@ -13,12 +13,27 @@ from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
+import aiohttp
 import os
 
 from config import BOT_TOKEN
 from checker.local_db import LocalDB
 from cache.memory import MemoryCache
 from utils.updater import setup_scheduler, update_all_feeds
+
+# ─── Self-ping (Render uxlamasligi uchun) ────────────────────────────
+RENDER_URL = os.getenv("RENDER_EXTERNAL_URL", "")
+
+async def self_ping():
+    """Har 10 daqiqada o'z-o'ziga ping — Render uxlamaydi."""
+    if not RENDER_URL:
+        return
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(RENDER_URL, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                logger.info("🏓 Self-ping: %s (status=%d)", RENDER_URL, resp.status)
+    except Exception as e:
+        logger.warning("🏓 Self-ping xatolik: %s", e)
 
 # ─── Logging sozlash ────────────────────────────────────────────────
 logging.basicConfig(
@@ -88,6 +103,20 @@ async def main():
     # ── APScheduler — har 6 soatda CSV yangilash ─────────────────
     scheduler = setup_scheduler(local_db)
     logger.info("✅ CSV updater rejalashtirild")
+
+    # ── Self-ping — har 10 daqiqada (Render uxlamasligi uchun) ───
+    if RENDER_URL:
+        from apscheduler.triggers.interval import IntervalTrigger
+        scheduler.add_job(
+            self_ping,
+            trigger=IntervalTrigger(minutes=10),
+            id="self_ping",
+            name="Self Ping (Keep Alive)",
+            replace_existing=True,
+        )
+        logger.info("🏓 Self-ping yoqildi: har 10 daqiqada → %s", RENDER_URL)
+    else:
+        logger.info("ℹ️ RENDER_EXTERNAL_URL topilmadi — self-ping o'chirilgan")
 
     # ── Handler larni ro'yxatdan o'tkazish ───────────────────────
     from handlers import commands, admin, messages, inline
