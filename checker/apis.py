@@ -1,6 +1,6 @@
 """
-apis.py — 5-QATLAM
-Google Safe Browsing → VirusTotal → IPQS zanjiri.
+apis.py — 5-QATLAM (KUCHAYTIRILGAN)
+Google Safe Browsing → VirusTotal → IPQS → URLScan → CheckPhish zanjiri.
 Oldingi API xavfli desa keyingisi chaqirilmaydi.
 """
 
@@ -15,6 +15,8 @@ from config import (
     GOOGLE_SAFE_BROWSING_KEY,
     VIRUSTOTAL_API_KEY,
     IPQS_API_KEY,
+    URLSCAN_API_KEY,
+    CHECKPHISH_API_KEY,
     VT_RATE_PER_MINUTE,
     IPQS_RATE_PER_DAY,
 )
@@ -39,7 +41,7 @@ class APIChecker:
 
     async def check(self, url: str) -> APIResult:
         """
-        URL ni 3 ta API dan ketma-ket tekshirish.
+        URL ni API lardan ketma-ket tekshirish.
         Birinchi xavfli natija topilsa — qolganlar o'tkazib yuboriladi.
         """
         total_score = 0
@@ -75,8 +77,32 @@ class APIChecker:
             if ipqs_result:
                 total_score += ipqs_result.score
                 all_signals.extend(ipqs_result.signals)
+                if ipqs_result.score >= 40:
+                    source = source or ipqs_result.source
+                    return APIResult(total_score, all_signals, source)
                 if not source:
                     source = ipqs_result.source
+
+        # ── 4. URLScan.io ───────────────────────────────────────
+        if URLSCAN_API_KEY:
+            urlscan_result = await self._check_urlscan(url)
+            if urlscan_result:
+                total_score += urlscan_result.score
+                all_signals.extend(urlscan_result.signals)
+                if urlscan_result.score >= 40:
+                    source = source or urlscan_result.source
+                    return APIResult(total_score, all_signals, source)
+                if not source:
+                    source = urlscan_result.source
+
+        # ── 5. CheckPhish ───────────────────────────────────────
+        if CHECKPHISH_API_KEY:
+            cp_result = await self._check_checkphish(url)
+            if cp_result:
+                total_score += cp_result.score
+                all_signals.extend(cp_result.signals)
+                if not source:
+                    source = cp_result.source
 
         return APIResult(total_score, all_signals, source or "API")
 
@@ -113,7 +139,7 @@ class APIChecker:
                         matches = data.get("matches", [])
                         if matches:
                             threat_type = matches[0].get("threatType", "UNKNOWN")
-                            score = 60
+                            score = 70  # Kuchaytirilgan (avval 60 edi)
                             signal = f"🔴 Google Safe Browsing: {threat_type}"
                             return APIResult(score, [signal], "GSB")
                         return APIResult(0, [], "GSB")
@@ -151,22 +177,44 @@ class APIChecker:
                         suspicious = stats.get("suspicious", 0)
                         total_bad = malicious + suspicious
 
+                        # Kategoriyalar tahlili
+                        categories = (
+                            data.get("data", {})
+                            .get("attributes", {})
+                            .get("categories", {})
+                        )
+                        cat_signals = []
+                        for engine, cat in categories.items():
+                            cat_lower = cat.lower()
+                            if any(w in cat_lower for w in [
+                                "phishing", "malware", "fraud", "spam",
+                                "scam", "suspicious", "malicious"
+                            ]):
+                                cat_signals.append(f"{engine}: {cat}")
+
+                        score = 0
+                        signals = []
+
                         if total_bad >= 5:
-                            return APIResult(
-                                50,
-                                [f"🔴 VirusTotal: {total_bad} antivirus aniqladi"],
-                                "VT",
-                            )
+                            score = 60  # Kuchaytirilgan (avval 50 edi)
+                            signals.append(f"🔴 VirusTotal: {total_bad} antivirus aniqladi")
+                        elif total_bad >= 2:
+                            score = 40
+                            signals.append(f"🟠 VirusTotal: {total_bad} antivirus shubhalanmoqda")
                         elif total_bad >= 1:
-                            return APIResult(
-                                30,
-                                [f"🟡 VirusTotal: {total_bad} antivirus shubhalanmoqda"],
-                                "VT",
+                            score = 25
+                            signals.append(f"🟡 VirusTotal: {total_bad} antivirus shubhalanmoqda")
+
+                        if cat_signals:
+                            score += 15
+                            signals.append(
+                                f"📂 VT kategoriya: {', '.join(cat_signals[:3])}"
                             )
-                        return APIResult(0, [], "VT")
+
+                        return APIResult(score, signals, "VT")
                     elif resp.status == 404:
-                        # URL hali VT da scan qilinmagan
-                        return APIResult(0, [], "VT")
+                        # URL hali VT da scan qilinmagan — bu ham signal
+                        return APIResult(5, ["ℹ️ VT: URL hali scan qilinmagan (yangi sayt)"], "VT")
                     else:
                         logger.warning("VT API xatolik: status=%d", resp.status)
                         return None
@@ -199,14 +247,23 @@ class APIChecker:
                         fraud_score = data.get("risk_score", 0)
                         phishing = data.get("phishing", False)
                         malware = data.get("malware", False)
+                        suspicious = data.get("suspicious", False)
+                        unsafe = data.get("unsafe", False)
+                        domain_age_days = data.get("domain_age", {}).get("human", "")
+                        parking = data.get("parking", False)
 
                         score = 0
                         signals: list[str] = []
 
-                        if fraud_score >= 80:
-                            score += 40
+                        if fraud_score >= 85:
+                            score += 50
                             signals.append(
                                 f"🔴 IPQS fraud score: {fraud_score}/100"
+                            )
+                        elif fraud_score >= 70:
+                            score += 35
+                            signals.append(
+                                f"🟠 IPQS fraud score: {fraud_score}/100"
                             )
                         elif fraud_score >= 50:
                             score += 20
@@ -215,11 +272,30 @@ class APIChecker:
                             )
 
                         if phishing:
-                            score += 25
+                            score += 30
                             signals.append("🔴 IPQS: Phishing aniqlandi")
                         if malware:
-                            score += 25
+                            score += 30
                             signals.append("🔴 IPQS: Malware aniqlandi")
+                        if suspicious:
+                            score += 15
+                            signals.append("🟡 IPQS: Shubhali deb belgilangan")
+                        if unsafe:
+                            score += 20
+                            signals.append("🟠 IPQS: Xavfli deb belgilangan")
+                        if parking:
+                            score += 10
+                            signals.append("🅿️ IPQS: Parklangan domen")
+
+                        # Yosh domen (30 kundan kam)
+                        if domain_age_days and "day" in str(domain_age_days).lower():
+                            try:
+                                days = int(re.search(r"\d+", str(domain_age_days)).group())
+                                if days < 30:
+                                    score += 15
+                                    signals.append(f"🆕 Yangi domen: {domain_age_days}")
+                            except (AttributeError, ValueError):
+                                pass
 
                         return APIResult(score, signals, "IPQS")
                     else:
@@ -227,6 +303,114 @@ class APIChecker:
                         return None
         except Exception as e:
             logger.error("IPQS API Exception: %s", e)
+            return None
+
+    # ─── URLScan.io ──────────────────────────────────────────────────
+
+    async def _check_urlscan(self, url: str) -> APIResult | None:
+        """URLScan.io — URL ni skanerlash va natija olish."""
+        search_url = f"https://urlscan.io/api/v1/search/?q=page.url:\"{url}\"&size=1"
+        headers = {"API-Key": URLSCAN_API_KEY}
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                # Avval mavjud scan natijalarini qidirish
+                async with session.get(
+                    search_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        results = data.get("results", [])
+
+                        if results:
+                            result = results[0]
+                            verdicts = result.get("verdicts", {})
+                            overall_malicious = verdicts.get("overall", {}).get("malicious", False)
+                            score_val = verdicts.get("overall", {}).get("score", 0)
+
+                            score = 0
+                            signals = []
+
+                            if overall_malicious:
+                                score = 50
+                                signals.append(f"🔴 URLScan: Zararli deb belgilangan (score={score_val})")
+                            elif score_val >= 50:
+                                score = 30
+                                signals.append(f"🟡 URLScan: Shubhali (score={score_val})")
+
+                            return APIResult(score, signals, "URLScan")
+
+                        return APIResult(0, [], "URLScan")
+                    else:
+                        logger.warning("URLScan API xatolik: status=%d", resp.status)
+                        return None
+        except Exception as e:
+            logger.error("URLScan API Exception: %s", e)
+            return None
+
+    # ─── CheckPhish ──────────────────────────────────────────────────
+
+    async def _check_checkphish(self, url: str) -> APIResult | None:
+        """CheckPhish.ai — URL phishing tekshiruvi."""
+        api_url = "https://developers.checkphish.ai/api/neo/scan"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "apiKey": CHECKPHISH_API_KEY,
+            "urlInfo": {"url": url},
+            "scanType": "quick",
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                # Scan yuborish
+                async with session.post(
+                    api_url, json=payload, headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status != 200:
+                        logger.warning("CheckPhish scan xatolik: status=%d", resp.status)
+                        return None
+                    scan_data = await resp.json()
+                    job_id = scan_data.get("jobID", "")
+                    if not job_id:
+                        return None
+
+                # Natijani olish (5 sekund kutish)
+                await asyncio.sleep(5)
+
+                result_url = "https://developers.checkphish.ai/api/neo/scan/status"
+                result_payload = {
+                    "apiKey": CHECKPHISH_API_KEY,
+                    "jobID": job_id,
+                    "insights": True,
+                }
+
+                async with session.post(
+                    result_url, json=result_payload, headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status != 200:
+                        return None
+
+                    data = await resp.json()
+                    disposition = data.get("disposition", "").lower()
+
+                    score = 0
+                    signals = []
+
+                    if disposition in ("phish", "phishing"):
+                        score = 60
+                        signals.append("🔴 CheckPhish: PHISHING aniqlandi!")
+                    elif disposition in ("suspicious", "likely_phish"):
+                        score = 35
+                        signals.append("🟡 CheckPhish: Shubhali havola")
+                    elif disposition == "malware":
+                        score = 60
+                        signals.append("🔴 CheckPhish: MALWARE aniqlandi!")
+
+                    return APIResult(score, signals, "CheckPhish")
+        except Exception as e:
+            logger.error("CheckPhish API Exception: %s", e)
             return None
 
     # ─── Rate Limiting ───────────────────────────────────────────────
@@ -246,3 +430,7 @@ class APIChecker:
             self._ipqs_day = today
             self._ipqs_count_today = 0
         return self._ipqs_count_today < IPQS_RATE_PER_DAY
+
+
+# Regex import for IPQS domain age parsing
+import re

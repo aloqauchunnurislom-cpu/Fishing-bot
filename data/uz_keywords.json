@@ -15,7 +15,26 @@
         "bonus app", "priz app", "yutuq app",
         "sud qarori", "court letter", "financial assistance",
         "click-uz", "payme-verify", "uzcard-login",
-        "2fa", "otp", "faceid"
+        "2fa", "otp", "faceid",
+        "omadli", "omad", "lotereya", "lottery", "prize", "winner",
+        "lucky", "cash", "money", "reward", "gift", "giveaway",
+        "transfer", "deposit", "withdraw", "pul o'tkazish",
+        "hisobni tasdiqlang", "kartangiz bloklandi",
+        "tizimga kiring", "yangilanish talab", "zudlik bilan",
+        "account suspended", "verify your", "confirm your",
+        "urgent action", "immediate action",
+        "congratulations", "tabriklaymiz", "sizni tanladik",
+        "millioner", "million", "ming dollar", "ming so'm",
+        "crypto", "bitcoin", "trading", "forex",
+        "earn money", "pul ishlash", "uy sharoitida", "kuniga",
+        "oyiga", "daromad olish", "ishonchli invest",
+        "soliq", "jazo", "jarima", "qarz", "to'lang",
+        "prokuratura", "ichki ishlar", "mvd", "fbi",
+        "bank xizmati", "xavfsizlik xizmati", "texnik yordam",
+        "password reset", "parolni tiklash", "parolni yangilash",
+        "click.uz ga kiring", "payme.uz ga kiring",
+        "apk yuklab oling", "ilovani yuklab oling",
+        "android uchun", "yuklab olish", "download"
     ],
     "cyrillic": [
         "ютуқ", "совға", "мукофот", "кредит", "карта", "ҳамён",
@@ -29,7 +48,13 @@
         "шошилинг", "ҳозир", "кечиктирманг", "ҳисобингиз хавф остида",
         "телеграм-премиум", "телеграм премиум",
         "гугл плей", "янгилаш",
-        "суд қарори"
+        "суд қарори",
+        "омадли", "омад", "лотерея", "совринли",
+        "табриклаймиз", "сизни танладик",
+        "миллионер", "миллион", "пул ишлаш",
+        "криптовалюта", "биткоин", "трейдинг",
+        "солиқ", "жазо", "жарима", "қарз", "тўланг",
+        "прокуратура", "ички ишлар"
     ],
     "suspicious_apk_patterns": [
         ".mp4.apk", ".pdf.apk", ".jpg.apk", ".doc.apk", ".png.apk",
@@ -37,10 +62,18 @@
         "court_letter.apk", "sud.apk", "prezident.apk",
         "click.apk", "payme.apk", "uzcard.apk", "humo.apk",
         "telegram_premium.apk", "premium.apk",
-        "google_play.apk", "update.apk"
+        "google_play.apk", "update.apk",
+        "bank.apk", "wallet.apk", "security.apk",
+        "antivirus.apk", "cleaner.apk", "booster.apk",
+        "vpn.apk", "free_vpn.apk",
+        "mod.apk", "hack.apk", "crack.apk",
+        "instagram.apk", "whatsapp.apk", "tiktok.apk"
     ],
     "malware_names": [
         "wonderland", "wretchedcat", "qwizzserial",
-        "ajina.banker", "ajina", "firescam"
+        "ajina.banker", "ajina", "firescam",
+        "godfather", "sharkbot", "flubot",
+        "teabot", "hydra", "ermac", "xenomorph",
+        "cerberus", "anubis", "eventbot"
     ]
 }

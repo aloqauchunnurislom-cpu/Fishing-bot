@@ -21,6 +21,9 @@ ADMIN_IDS: list[int] = [
 VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY", "")
 GOOGLE_SAFE_BROWSING_KEY = os.getenv("GOOGLE_SAFE_BROWSING_KEY", "")
 IPQS_API_KEY = os.getenv("IPQS_API_KEY", "")
+URLSCAN_API_KEY = os.getenv("URLSCAN_API_KEY", "")
+CHECKPHISH_API_KEY = os.getenv("CHECKPHISH_API_KEY", "")
+KPHISH_API_KEY = os.getenv("KPHISH_API_KEY", "")
 
 # ─── Cache ──────────────────────────────────────────────────
 CACHE_TTL = int(os.getenv("CACHE_TTL", "86400"))          # 24 soat
