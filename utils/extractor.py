@@ -59,17 +59,22 @@ def extract_urls(text: str) -> list[str]:
                     continue
             raw = f"https://{raw}"
 
-        # Takrorlanmasin
-        normalized = raw.lower()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
+        # Ikkilangan protokolni tuzatish (https://https:// yoki https://tps://)
+        raw = re.sub(r'^https?://+(?:https?://+)', 'https://', raw)
 
-        # Yaroqli URL mi tekshirish
+        # Takrorlanmasin — domen bo'yicha ham tekshirish
         try:
             parsed = urlparse(raw)
-            if parsed.hostname and "." in parsed.hostname:
-                urls.append(raw)
+            if not parsed.hostname or "." not in parsed.hostname:
+                continue
+            # Domen + path bo'yicha normalized key
+            domain_key = parsed.hostname.lower()
+            path_key = (parsed.path or "/").rstrip("/")
+            norm_key = f"{domain_key}{path_key}"
+            if norm_key in seen:
+                continue
+            seen.add(norm_key)
+            urls.append(raw)
         except Exception:
             continue
 
@@ -97,23 +102,49 @@ def extract_urls_from_entities(message) -> list[str]:
             url = text[entity.offset : entity.offset + entity.length]
             if not url.startswith("http"):
                 url = f"https://{url}"
-            norm = url.lower()
-            if norm not in seen:
-                seen.add(norm)
-                urls.append(url)
+            # Ikkilangan protokolni tuzatish
+            url = re.sub(r'^https?://+(?:https?://+)', 'https://', url)
+            try:
+                parsed = urlparse(url)
+                if not parsed.hostname or "." not in parsed.hostname:
+                    continue
+                domain_key = parsed.hostname.lower()
+                path_key = (parsed.path or "/").rstrip("/")
+                norm_key = f"{domain_key}{path_key}"
+                if norm_key not in seen:
+                    seen.add(norm_key)
+                    urls.append(url)
+            except Exception:
+                continue
         elif entity.type == "text_link":
             url = entity.url or ""
             if url:
-                norm = url.lower()
-                if norm not in seen:
-                    seen.add(norm)
-                    urls.append(url)
+                try:
+                    parsed = urlparse(url)
+                    if not parsed.hostname:
+                        continue
+                    domain_key = parsed.hostname.lower()
+                    path_key = (parsed.path or "/").rstrip("/")
+                    norm_key = f"{domain_key}{path_key}"
+                    if norm_key not in seen:
+                        seen.add(norm_key)
+                        urls.append(url)
+                except Exception:
+                    continue
 
-    # Matndan ham qo'shimcha URL lar
+    # Matndan ham qo'shimcha URL lar (entities dan topilmaganlarni)
     for url in extract_urls(text):
-        norm = url.lower()
-        if norm not in seen:
-            seen.add(norm)
-            urls.append(url)
+        try:
+            parsed = urlparse(url)
+            if not parsed.hostname:
+                continue
+            domain_key = parsed.hostname.lower()
+            path_key = (parsed.path or "/").rstrip("/")
+            norm_key = f"{domain_key}{path_key}"
+            if norm_key not in seen:
+                seen.add(norm_key)
+                urls.append(url)
+        except Exception:
+            continue
 
     return urls

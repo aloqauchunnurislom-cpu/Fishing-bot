@@ -69,17 +69,21 @@ async def cmd_start(message: types.Message):
 async def check_subscription_callback(callback: types.CallbackQuery):
     """Obuna bo'ldim tugmasi."""
     if await is_subscribed(callback.bot, callback.from_user.id):
-        local_db = callback.bot.__dict__.get("_local_db")
-        lang = "latin"
-        if local_db:
-            lang = await local_db.get_user_language(callback.from_user.id)
+        await callback.answer("✅ Rahmat! Obuna tasdiqlandi!", show_alert=False)
         await callback.message.edit_text(
-            get_text("start", lang),
+            "✅ <b>Ajoyib! Siz obuna bo'ldingiz!</b>\n\n"
+            "Endi botdan to'liq foydalanishingiz mumkin.\n"
+            "Menga istalgan havolani yuboring — men uni tekshirib beraman! 🛡️\n\n"
+            "📌 Buyruqlar:\n"
+            "  /scan URL — havola tekshirish\n"
+            "  /help — yordam\n"
+            "  /stats — statistika",
             parse_mode="HTML",
+            reply_markup=None,  # Tugmalarni olib tashlash
         )
     else:
         await callback.answer(
-            "❌ Siz hali obuna bo'lmagansiz!",
+            "❌ Siz hali obuna bo'lmagansiz! Avval kanalga obuna bo'ling.",
             show_alert=True
         )
 
