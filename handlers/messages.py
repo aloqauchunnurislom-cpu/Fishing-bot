@@ -224,9 +224,19 @@ async def handle_private_message(message: types.Message):
 @router.message(F.chat.type.in_({"group", "supergroup"}))
 async def handle_group_message(message: types.Message):
     """Guruhda kelgan xabarlardan URL larni tekshirish."""
+    logger.debug(
+        "[GURUH] Xabar olindi: chat_id=%s, from=%s, text='%s'",
+        message.chat.id,
+        message.from_user.id if message.from_user else "bot",
+        (message.text or "")[:80],
+    )
+
     urls = extract_urls_from_entities(message)
     if not urls:
+        logger.debug("[GURUH] URL topilmadi — xabar o'tkazib yuborildi.")
         return
+
+    logger.info("[GURUH] URL topildi: %s", urls)
 
     local_db: LocalDB = message.bot.__dict__.get("_local_db")
 
@@ -234,6 +244,7 @@ async def handle_group_message(message: types.Message):
     if local_db:
         settings = await local_db.get_group_settings(message.chat.id)
         if not settings["scan_enabled"]:
+            logger.debug("[GURUH] chat_id=%s uchun skan o'chirilgan", message.chat.id)
             return
         strict_mode = settings["strict_mode"]
         lang = settings["language"]
@@ -242,12 +253,23 @@ async def handle_group_message(message: types.Message):
         lang = "latin"
 
     for url in urls[:5]:  # Guruhda maks 5 URL
-        result = await _run_full_check(
-            url, message.text or "", message.bot, strict_mode=strict_mode
-        )
+        logger.info("[GURUH] Tekshirilmoqda: %s (strict=%s)", url, strict_mode)
+        try:
+            result = await _run_full_check(
+                url, message.text or "", message.bot, strict_mode=strict_mode
+            )
+        except Exception as e:
+            logger.exception("[GURUH] URL tekshirishda xatolik: %s — %s", url, e)
+            continue
 
         if not result:
+            logger.debug("[GURUH] Natija None qaytdi: %s", url)
             continue
+
+        logger.info(
+            "[GURUH] Natija: score=%d should_delete=%s should_warn=%s",
+            result.score, result.should_delete, result.should_warn,
+        )
 
         # ── Xavfli — xabarni o'chirish ──────────────────────────
         if result.should_delete:

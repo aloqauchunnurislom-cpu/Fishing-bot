@@ -9,14 +9,14 @@ import asyncio
 import logging
 import sys
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiohttp import web
 import aiohttp
 import os
 
-from config import BOT_TOKEN
+from config import BOT_TOKEN, ADMIN_IDS
 from checker.local_db import LocalDB
 from cache.memory import MemoryCache
 from utils.updater import setup_scheduler, update_all_feeds
@@ -37,7 +37,7 @@ async def self_ping():
 
 # ─── Logging sozlash ────────────────────────────────────────────────
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # DEBUG: guruh muammolarini aniqlash uchun
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
@@ -69,6 +69,32 @@ async def main():
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
+
+    # ── DEBUG: Har bir kelgan update ni loglash (middleware) ──────
+    from aiogram import BaseMiddleware
+    from typing import Callable, Dict, Any, Awaitable
+
+    class LogAllUpdatesMiddleware(BaseMiddleware):
+        async def __call__(
+            self,
+            handler: Callable[[types.TelegramObject, Dict[str, Any]], Awaitable[Any]],
+            event: types.TelegramObject,
+            data: Dict[str, Any],
+        ) -> Any:
+            if isinstance(event, types.Message):
+                chat_type = event.chat.type if event.chat else "???"
+                chat_id = event.chat.id if event.chat else "???"
+                user_id = event.from_user.id if event.from_user else "???"
+                text = (event.text or event.caption or "")[:100]
+                logger.warning(
+                    "📩 XABAR KELDI: chat_type=%s, chat_id=%s, user=%s, text='%s'",
+                    chat_type, chat_id, user_id, text,
+                )
+            return await handler(event, data)
+
+    dp.message.middleware(LogAllUpdatesMiddleware())
+    dp.callback_query.middleware(LogAllUpdatesMiddleware())
+    logger.info("✅ Debug middleware o'rnatildi — har bir xabar loglanadi")
 
     # Render uchun kichik web server (Uxlamasligi uchun)
     async def handle_ping(request):
@@ -139,29 +165,71 @@ async def main():
         len(local_db.openphish_set),
     )
 
+    # ── MUHIM: Privacy Mode tekshiruvi ───────────────────────────
+    logger.info("━" * 50)
+    can_read = getattr(bot_info, "can_read_all_group_messages", False)
+    if can_read:
+        logger.info("✅ Privacy Mode O'CHIRILGAN — bot guruhda barcha xabarlarni oladi!")
+    else:
+        logger.error("━" * 50)
+        logger.error("❌❌❌ XATO: PRIVACY MODE YOQILGAN! ❌❌❌")
+        logger.error("❌ Bot guruhda ODDIY XABARLARNI OLMAYDI!")
+        logger.error("❌ Faqat buyruqlar (/scan, /scan_on...) ishlaydi.")
+        logger.error("")
+        logger.error("📋 TUZATISH UCHUN:")
+        logger.error("   1. @BotFather ga boring")
+        logger.error("   2. /mybots → botingizni tanlang")
+        logger.error("   3. Bot Settings → Group Privacy → Turn off")
+        logger.error("   4. Botni guruhdan CHIQARIB, qaytadan QO'SHING")
+        logger.error("━" * 50)
+
+        # Adminlarga Telegram orqali xabar yuborish
+        for admin_id in ADMIN_IDS:
+            try:
+                await bot.send_message(
+                    admin_id,
+                    "❌ <b>MUHIM XATO!</b>\n\n"
+                    "Bot guruhda oddiy xabarlarni OLMAYAPTI!\n"
+                    "<b>Sabab:</b> Privacy Mode YOQILGAN.\n\n"
+                    "📋 <b>Tuzatish:</b>\n"
+                    "1. @BotFather → /mybots → Bot tanlash\n"
+                    "2. Bot Settings → Group Privacy\n"
+                    "3. <b>Turn off</b> bosing\n"
+                    "4. Botni guruhdan chiqarib, qaytadan qo'shing\n\n"
+                    "⚠️ Bu qilinmaguncha bot guruhda ishlamaydi!",
+                    parse_mode="HTML",
+                )
+            except Exception:
+                pass
+
+    logger.info("━" * 50)
+
     # ── Bot buyruqlarini o'rnatish ────────────────────────────────
     await bot.set_my_commands([
         {"command": "start", "description": "Botni ishga tushirish"},
         {"command": "help", "description": "Yordam"},
         {"command": "scan", "description": "Havola tekshirish — /scan URL"},
         {"command": "stats", "description": "Bugungi statistika"},
+        {"command": "scan_on", "description": "🛡 Guruhda skanlashni yoqish"},
+        {"command": "scan_off", "description": "⏸ Guruhda skanlashni o'chirish"},
         {"command": "lang_latin", "description": "🌐 Lotin alifbosi"},
         {"command": "lang_cyrillic", "description": "🌐 Кирилл алифбоси"},
     ])
 
     logger.info("🚀 Bot polling rejimida ishga tushdi!")
-    logger.info("━" * 50)
 
     # ── Polling boshlash ─────────────────────────────────────────
     try:
         await dp.start_polling(
             bot,
             allowed_updates=[
-                "message",
-                "callback_query",   # ← Tugma bosishlar uchun MUHIM!
-                "inline_query",
-                "chat_member",
-                "my_chat_member",
+                "message",          # Oddiy xabarlar
+                "edited_message",   # Tahrirlangan xabarlar
+                "callback_query",   # Tugma bosishlar uchun MUHIM!
+                "inline_query",     # Inline rejim
+                "chat_member",      # Guruh a'zolari o'zgarishi
+                "my_chat_member",   # Botni guruhga qo'shish/chiqarish
+                "channel_post",     # Kanal postlari
             ],
         )
     finally:
