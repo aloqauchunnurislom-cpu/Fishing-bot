@@ -187,6 +187,16 @@ async def handle_private_message(message: types.Message):
     if not urls:
         return  # URL bo'lmasa — e'tiborsiz qoldirish
 
+    # Obuna tekshirish
+    if message.from_user:
+        from handlers.commands import is_subscribed, subscription_keyboard
+        if not await is_subscribed(message.bot, message.from_user.id):
+            await message.answer(
+                "⚠️ Botdan foydalanish uchun avval kanalga obuna bo'ling!",
+                reply_markup=subscription_keyboard()
+            )
+            return
+
     local_db: LocalDB = message.bot.__dict__.get("_local_db")
     lang = "latin"
     if local_db and message.from_user:
@@ -206,6 +216,7 @@ async def handle_private_message(message: types.Message):
         await status_msg.delete()
     except Exception:
         pass
+
 
 
 # ─── Guruh handleri ──────────────────────────────────────────────────

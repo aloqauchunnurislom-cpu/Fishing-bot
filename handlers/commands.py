@@ -6,6 +6,7 @@ import logging
 
 from aiogram import Router, types
 from aiogram.filters import Command
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from utils.languages import get_text
 from utils.extractor import extract_urls
@@ -13,20 +14,74 @@ from utils.extractor import extract_urls
 logger = logging.getLogger(__name__)
 router = Router()
 
+# ─── Kanal obunasi tekshiruvi ────────────────────────────────────────
+CHANNEL_USERNAME = "sharofiddinov_n"
+
+async def is_subscribed(bot, user_id: int) -> bool:
+    """Foydalanuvchi kanalga obuna bo'lganmi."""
+    try:
+        member = await bot.get_chat_member(
+            chat_id=f"@{CHANNEL_USERNAME}",
+            user_id=user_id
+        )
+        return member.status not in ("left", "kicked")
+    except Exception:
+        return False
+
+def subscription_keyboard() -> types.InlineKeyboardMarkup:
+    """Obuna bo'lish tugmasi."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="📢 Kanalga obuna bo'lish",
+        url=f"https://t.me/{CHANNEL_USERNAME}"
+    )
+    builder.button(
+        text="✅ Obuna bo'ldim",
+        callback_data="check_sub"
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
 
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Bot bilan tanishtirish."""
-    # Shared data dan local_db olish
     local_db = message.bot.__dict__.get("_local_db")
     lang = "latin"
     if local_db and message.from_user:
         lang = await local_db.get_user_language(message.from_user.id)
 
+    # Obuna tekshirish
+    if message.from_user and not await is_subscribed(message.bot, message.from_user.id):
+        await message.answer(
+            "⚠️ Botdan foydalanish uchun avval kanalga obuna bo'ling!",
+            reply_markup=subscription_keyboard()
+        )
+        return
+
     await message.answer(
         get_text("start", lang),
         parse_mode="HTML",
     )
+
+
+@router.callback_query(lambda c: c.data == "check_sub")
+async def check_subscription_callback(callback: types.CallbackQuery):
+    """Obuna bo'ldim tugmasi."""
+    if await is_subscribed(callback.bot, callback.from_user.id):
+        local_db = callback.bot.__dict__.get("_local_db")
+        lang = "latin"
+        if local_db:
+            lang = await local_db.get_user_language(callback.from_user.id)
+        await callback.message.edit_text(
+            get_text("start", lang),
+            parse_mode="HTML",
+        )
+    else:
+        await callback.answer(
+            "❌ Siz hali obuna bo'lmagansiz!",
+            show_alert=True
+        )
 
 
 @router.message(Command("help"))
@@ -63,6 +118,14 @@ async def cmd_scan(message: types.Message):
     urls = extract_urls(url_text)
     if not urls:
         await message.answer(get_text("no_url", lang))
+        return
+
+    # Obuna tekshirish
+    if message.from_user and not await is_subscribed(message.bot, message.from_user.id):
+        await message.answer(
+            "⚠️ Botdan foydalanish uchun avval kanalga obuna bo'ling!",
+            reply_markup=subscription_keyboard()
+        )
         return
 
     # Tekshirish logikasiga yo'naltirish (messages handler dagi engine)
