@@ -1,0 +1,46 @@
+{
+    "latin": [
+        "yutuq", "sovg'a", "mukofot", "kredit", "karta", "hamyon",
+        "to'lov", "bepul", "tekin", "daromad", "investitsiya", "bonus",
+        "aksiya", "chegirma", "shoshilinch", "tez", "darhol", "muddati",
+        "cheklangan", "g'olib", "priz", "keshbek",
+        "hisob", "himoya", "tasdiqlash", "bloklash", "sms kod", "pin kod",
+        "parol", "kartani bloklash", "pul yechish", "verify", "login",
+        "prezident yordami", "moliyaviy yordam", "sud xabarnomasi",
+        "sud chaqiruvi", "davlat yordami",
+        "shoshiling", "hozir", "kechiktirmang", "hisobingiz xavf ostida",
+        "telegram-premium", "telegram premium", "free premium",
+        "google play", "update", "yangilash",
+        "click pro", "payme gold", "uzcard new", "click update",
+        "bonus app", "priz app", "yutuq app",
+        "sud qarori", "court letter", "financial assistance",
+        "click-uz", "payme-verify", "uzcard-login",
+        "2fa", "otp", "faceid"
+    ],
+    "cyrillic": [
+        "ютуқ", "совға", "мукофот", "кредит", "карта", "ҳамён",
+        "тўлов", "бепул", "текин", "даромад", "инвестиция", "бонус",
+        "акция", "чегирма", "шошилинч", "тез", "дарҳол", "муддати",
+        "чекланган", "ғолиб", "приз", "кешбек",
+        "ҳисоб", "ҳимоя", "тасдиқлаш", "блоклаш", "смс код", "пин код",
+        "парол", "картани блоклаш", "пул ечиш",
+        "президент ёрдами", "молиявий ёрдам", "суд хабарномаси",
+        "суд чақируви", "давлат ёрдами",
+        "шошилинг", "ҳозир", "кечиктирманг", "ҳисобингиз хавф остида",
+        "телеграм-премиум", "телеграм премиум",
+        "гугл плей", "янгилаш",
+        "суд қарори"
+    ],
+    "suspicious_apk_patterns": [
+        ".mp4.apk", ".pdf.apk", ".jpg.apk", ".doc.apk", ".png.apk",
+        "photo.apk", "video.apk", "word.apk", "document.apk",
+        "court_letter.apk", "sud.apk", "prezident.apk",
+        "click.apk", "payme.apk", "uzcard.apk", "humo.apk",
+        "telegram_premium.apk", "premium.apk",
+        "google_play.apk", "update.apk"
+    ],
+    "malware_names": [
+        "wonderland", "wretchedcat", "qwizzserial",
+        "ajina.banker", "ajina", "firescam"
+    ]
+}

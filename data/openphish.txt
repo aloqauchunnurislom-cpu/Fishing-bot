@@ -1,0 +1,2 @@
+# OpenPhish feed — avtomatik yangilanadi (har 6 soatda)
+# Har bir qator bitta URL
